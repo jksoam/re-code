@@ -11,12 +11,12 @@ const CourseCard = ({ course }) => {
     "bg-danger", 
     "bg-warning", 
     "bg-info"
-  ], []); // Dependency array empty rakha
+  ], []); 
 
-  // Assign a random color for the card
+  // Assign a random color for the card (fixed dependency issue)
   const cardColorClass = useMemo(() => {
     return colorClasses[Math.floor(Math.random() * colorClasses.length)];
-  }, []); // Yahan bhi empty rakha
+  }, [colorClasses]); // Dependency array me colorClasses add kiya
 
   const toggleLessons = () => {
     setShowLessons(!showLessons);
