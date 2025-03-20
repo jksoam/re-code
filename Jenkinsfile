@@ -6,13 +6,16 @@ pipeline {
         DOCKER_TAG = 'latest'
         CONTAINER_NAME = 'react-nginx-container'
         REPO_URL = 'https://github.com/jksoam/re-code.git'
+        REMOTE_HOST = '54.242.109.3'
+        REMOTE_USER = 'root'
+        APP_PATH = '/root/app'
     }
 
     stages {
         stage('Clone Repository') {
             steps {
                 script {
-                    // Clone repo and clean
+                    // Clone repo and clean old build
                     checkout scm
                     sh 'rm -rf build || true'
                 }
@@ -22,11 +25,25 @@ pipeline {
         stage('Install and Build React App') {
             steps {
                 script {
-                    // Install and build
                     sh '''
+                    set -x  # Debugging enable
                     npm install
                     npm run build
+                    set +x  # Debugging disable
                     '''
+                }
+            }
+        }
+
+        stage('Transfer Build to Remote') {
+            steps {
+                script {
+                    sshagent(['docker_vm_ssh_key']) {
+                        sh '''
+                        ssh $REMOTE_USER@$REMOTE_HOST "rm -rf $APP_PATH/build"
+                        scp -r build/ $REMOTE_USER@$REMOTE_HOST:$APP_PATH/build
+                        '''
+                    }
                 }
             }
         }
@@ -34,13 +51,11 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Transfer build folder to Docker VM and build image
                     sshagent(['docker_vm_ssh_key']) {
                         sh '''
-                        scp -r build/ root@54.242.109.3:/root/app/build
-                        ssh root@54.242.109.3 << EOF
-                        cd /root/app
-                        docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
+                        ssh $REMOTE_USER@$REMOTE_HOST << EOF
+                        cd $APP_PATH
+                        docker build --no-cache -t $DOCKER_IMAGE:$DOCKER_TAG .
                         EOF
                         '''
                     }
@@ -48,30 +63,16 @@ pipeline {
             }
         }
 
-        stage('Stop and Remove Old Container') {
+        stage('Deploy Container with Zero Downtime') {
             steps {
                 script {
-                    // Stop and remove old container
                     sshagent(['docker_vm_ssh_key']) {
                         sh '''
-                        ssh root@54.242.109.3 << EOF
+                        ssh $REMOTE_USER@$REMOTE_HOST << EOF
+                        docker run -d --rm -p 8080:80 --name temp_container $DOCKER_IMAGE:$DOCKER_TAG
                         docker stop $CONTAINER_NAME || true
                         docker rm $CONTAINER_NAME || true
-                        EOF
-                        '''
-                    }
-                }
-            }
-        }
-
-        stage('Run New Docker Container') {
-            steps {
-                script {
-                    // Run new container
-                    sshagent(['docker_vm_ssh_key']) {
-                        sh '''
-                        ssh root@54.242.109.3 << EOF
-                        docker run -d -p 80:80 --name $CONTAINER_NAME $DOCKER_IMAGE:$DOCKER_TAG
+                        docker rename temp_container $CONTAINER_NAME
                         EOF
                         '''
                     }
