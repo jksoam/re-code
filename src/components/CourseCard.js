@@ -11,12 +11,12 @@ const CourseCard = ({ course }) => {
     "bg-danger", 
     "bg-warning", 
     "bg-info"
-  ], []); // useMemo se ensure ki baar-baar reinitialize na ho
+  ], []); // Dependency array empty rakha
 
-  // Assign a random color for the card based on the course's unique id
+  // Assign a random color for the card
   const cardColorClass = useMemo(() => {
     return colorClasses[Math.floor(Math.random() * colorClasses.length)];
-  }, [course.courseId, colorClasses]); // Fixed dependency array
+  }, []); // Yahan bhi empty rakha
 
   const toggleLessons = () => {
     setShowLessons(!showLessons);
