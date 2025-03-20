@@ -17,7 +17,11 @@ pipeline {
                 script {
                     sh '''
                     rm -rf build || true
-                    git clone $REPO_URL app || (cd app && git pull)
+                    if [ ! -d "app" ]; then
+                        git clone $REPO_URL app
+                    else
+                        cd app && git pull
+                    fi
                     '''
                 }
             }
@@ -40,7 +44,7 @@ pipeline {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'docker_vm_ssh_key', keyFileVariable: 'SSH_KEY')]) {
                         sh '''
-                        ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST "rm -rf $APP_PATH/build"
+                        ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST "mkdir -p $APP_PATH/build && rm -rf $APP_PATH/build/*"
                         scp -i "$SSH_KEY" -o StrictHostKeyChecking=no -r app/build/ $REMOTE_USER@$REMOTE_HOST:$APP_PATH/build
                         '''
                     }
