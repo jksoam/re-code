@@ -1,20 +1,19 @@
 pipeline {
     agent any
-    
+
     environment {
         DOCKER_IMAGE = 'react-nginx-app'
         DOCKER_TAG = 'latest'
         CONTAINER_NAME = 'react-nginx-container'
         REPO_URL = 'https://github.com/jksoam/re-code.git'
-        DOCKER_VM_IP = '54.242.109.3'  // Docker VM ka IP
     }
 
     stages {
         stage('Clone Repository') {
             steps {
                 script {
-                    // Clone and clean the workspace
-                    checkout([$class: 'GitSCM', branches: [[name: '*/main']], userRemoteConfigs: [[url: "$REPO_URL"]]])
+                    // Clone repo and clean
+                    checkout scm
                     sh 'rm -rf build || true'
                 }
             }
@@ -23,7 +22,7 @@ pipeline {
         stage('Install and Build React App') {
             steps {
                 script {
-                    // Install dependencies and build React app
+                    // Install and build
                     sh '''
                     npm install
                     npm run build
@@ -35,27 +34,43 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build Docker image
-                    sh '''
-                    docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
-                    '''
+                    // Transfer build folder to Docker VM and build image
+                    sshagent(['docker_vm_ssh_key']) {
+                        sh '''
+                        scp -r build/ root@54.242.109.3:/root/app/build
+                        ssh root@54.242.109.3 << EOF
+                        cd /root/app
+                        docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
+                        EOF
+                        '''
+                    }
                 }
             }
         }
 
-        stage('Push Docker Image to Docker VM') {
+        stage('Stop and Remove Old Container') {
             steps {
                 script {
-                    // SSH to Docker VM and remove old container + run new container
+                    // Stop and remove old container
                     sshagent(['docker_vm_ssh_key']) {
                         sh '''
-                        scp -o StrictHostKeyChecking=no Dockerfile root@$DOCKER_VM_IP:/root/
-                        scp -r -o StrictHostKeyChecking=no build root@$DOCKER_VM_IP:/root/
-                        
-                        ssh -o StrictHostKeyChecking=no root@$DOCKER_VM_IP << EOF
+                        ssh root@54.242.109.3 << EOF
                         docker stop $CONTAINER_NAME || true
                         docker rm $CONTAINER_NAME || true
-                        docker build -t $DOCKER_IMAGE:$DOCKER_TAG /root/
+                        EOF
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Run New Docker Container') {
+            steps {
+                script {
+                    // Run new container
+                    sshagent(['docker_vm_ssh_key']) {
+                        sh '''
+                        ssh root@54.242.109.3 << EOF
                         docker run -d -p 80:80 --name $CONTAINER_NAME $DOCKER_IMAGE:$DOCKER_TAG
                         EOF
                         '''
