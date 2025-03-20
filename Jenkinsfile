@@ -7,15 +7,14 @@ pipeline {
         CONTAINER_NAME = 'react-nginx-container'
         REPO_URL = 'https://github.com/jksoam/re-code.git'
         REMOTE_HOST = '54.242.109.3'
-        REMOTE_USER = 'root'
-        APP_PATH = '/root/app'
+        REMOTE_USER = 'ubuntu'  // ✅ root को हटाकर ubuntu कर दिया
+        APP_PATH = '/home/ubuntu/app'  // ✅ Path भी ठीक कर दिया
     }
 
     stages {
         stage('Clone Repository') {
             steps {
                 script {
-                    // Clone repo and clean old build
                     checkout scm
                     sh 'rm -rf build || true'
                 }
@@ -26,10 +25,10 @@ pipeline {
             steps {
                 script {
                     sh '''
-                    set -x  # Debugging enable
+                    set -x
                     npm install
                     npm run build
-                    set +x  # Debugging disable
+                    set +x
                     '''
                 }
             }
@@ -55,7 +54,7 @@ pipeline {
                         sh '''
                         ssh -i $SSH_KEY -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST << EOF
                         cd $APP_PATH
-                        docker build --no-cache -t $DOCKER_IMAGE:$DOCKER_TAG .
+                        sudo docker build --no-cache -t $DOCKER_IMAGE:$DOCKER_TAG .
                         EOF
                         '''
                     }
@@ -69,10 +68,10 @@ pipeline {
                     withCredentials([sshUserPrivateKey(credentialsId: 'docker_vm_ssh_key', keyFileVariable: 'SSH_KEY')]) {
                         sh '''
                         ssh -i $SSH_KEY -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST << EOF
-                        docker run -d --rm -p 8080:80 --name temp_container $DOCKER_IMAGE:$DOCKER_TAG
-                        docker stop $CONTAINER_NAME || true
-                        docker rm $CONTAINER_NAME || true
-                        docker rename temp_container $CONTAINER_NAME
+                        sudo docker run -d --rm -p 8080:80 --name temp_container $DOCKER_IMAGE:$DOCKER_TAG
+                        sudo docker stop $CONTAINER_NAME || true
+                        sudo docker rm $CONTAINER_NAME || true
+                        sudo docker rename temp_container $CONTAINER_NAME
                         EOF
                         '''
                     }
