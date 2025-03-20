@@ -38,10 +38,10 @@ pipeline {
         stage('Transfer Build to Remote') {
             steps {
                 script {
-                    sshagent(['docker_vm_ssh_key']) {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'docker_vm_ssh_key', keyFileVariable: 'SSH_KEY')]) {
                         sh '''
-                        ssh $REMOTE_USER@$REMOTE_HOST "rm -rf $APP_PATH/build"
-                        scp -r build/ $REMOTE_USER@$REMOTE_HOST:$APP_PATH/build
+                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST "rm -rf $APP_PATH/build"
+                        scp -i $SSH_KEY -o StrictHostKeyChecking=no -r build/ $REMOTE_USER@$REMOTE_HOST:$APP_PATH/build
                         '''
                     }
                 }
@@ -51,9 +51,9 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    sshagent(['docker_vm_ssh_key']) {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'docker_vm_ssh_key', keyFileVariable: 'SSH_KEY')]) {
                         sh '''
-                        ssh $REMOTE_USER@$REMOTE_HOST << EOF
+                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST << EOF
                         cd $APP_PATH
                         docker build --no-cache -t $DOCKER_IMAGE:$DOCKER_TAG .
                         EOF
@@ -66,9 +66,9 @@ pipeline {
         stage('Deploy Container with Zero Downtime') {
             steps {
                 script {
-                    sshagent(['docker_vm_ssh_key']) {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'docker_vm_ssh_key', keyFileVariable: 'SSH_KEY')]) {
                         sh '''
-                        ssh $REMOTE_USER@$REMOTE_HOST << EOF
+                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST << EOF
                         docker run -d --rm -p 8080:80 --name temp_container $DOCKER_IMAGE:$DOCKER_TAG
                         docker stop $CONTAINER_NAME || true
                         docker rm $CONTAINER_NAME || true
