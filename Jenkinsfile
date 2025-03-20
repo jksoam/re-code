@@ -46,6 +46,7 @@ pipeline {
                         sh '''
                         ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST "mkdir -p $APP_PATH/build && rm -rf $APP_PATH/build/*"
                         scp -i "$SSH_KEY" -o StrictHostKeyChecking=no -r app/build/ $REMOTE_USER@$REMOTE_HOST:$APP_PATH/build
+                        scp -i "$SSH_KEY" -o StrictHostKeyChecking=no app/Dockerfile $REMOTE_USER@$REMOTE_HOST:$APP_PATH/  # ✅ Dockerfile Copy Added
                         '''
                     }
                 }
