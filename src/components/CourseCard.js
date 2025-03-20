@@ -4,19 +4,19 @@ const CourseCard = ({ course }) => {
   const [showLessons, setShowLessons] = useState(false);
 
   // Predefined list of Bootstrap background color classes
-  const colorClasses = [
+  const colorClasses = useMemo(() => [
     "bg-primary", 
     "bg-secondary", 
     "bg-success", 
     "bg-danger", 
     "bg-warning", 
     "bg-info"
-  ];
+  ], []); // useMemo se ensure ki baar-baar reinitialize na ho
 
   // Assign a random color for the card based on the course's unique id
   const cardColorClass = useMemo(() => {
     return colorClasses[Math.floor(Math.random() * colorClasses.length)];
-  }, [course.courseId]);
+  }, [course.courseId, colorClasses]); // Fixed dependency array
 
   const toggleLessons = () => {
     setShowLessons(!showLessons);
