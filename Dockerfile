@@ -1,32 +1,35 @@
-# Stage 1: Build React App
+# Stage 1: Build React/Next.js app
 FROM node:20 AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json first
+# Copy package files first for caching
 COPY package.json package-lock.json ./
 
 # Install dependencies
 RUN npm ci --no-progress --prefer-offline
 
-# Copy source code
+# Copy rest of the app
 COPY . .
 
-# Build React app
+# Build the application
 RUN npm run build
 
-# Stage 2: Serve with Nginx
+# Stage 2: Serve using Nginx
 FROM nginx:latest AS runner
 
-# Remove default Nginx static files
-RUN rm -rf /usr/share/nginx/html/*
+# Set working directory
+WORKDIR /usr/share/nginx/html
 
-# Copy built React files to Nginx HTML directory
-COPY --from=builder /app/build /usr/share/nginx/html
+# Remove default Nginx HTML files
+RUN rm -rf ./*
 
-# Copy custom Nginx config (Optional)
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy build output from builder stage
+COPY --from=builder /app/build ./
+
+# Copy custom Nginx configuration (optional)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port 80
 EXPOSE 80
