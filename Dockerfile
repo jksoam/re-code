@@ -2,7 +2,7 @@
 FROM node:20 AS builder
 
 # Set working directory
-WORKDIR /app
+WORKDIR /home/ubuntu/app  # Set correct directory
 
 # Copy package files first for caching
 COPY package.json package-lock.json ./
@@ -14,19 +14,19 @@ RUN npm ci --no-progress --prefer-offline
 COPY . .
 
 # Build the application
-RUN npm run build
+RUN npm run build  # This will work if "build" script is in package.json
 
 # Stage 2: Serve using Nginx
 FROM nginx:latest AS runner
 
-# Set working directory
+# Set working directory for nginx
 WORKDIR /usr/share/nginx/html
 
 # Remove default Nginx HTML files
 RUN rm -rf ./*
 
 # Copy build output from builder stage
-COPY --from=builder /app/build ./
+COPY --from=builder /home/ubuntu/app/build ./
 
 # Expose port 80
 EXPOSE 80
