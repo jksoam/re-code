@@ -1,32 +1,31 @@
-# Stage 1: Build React Application
-FROM node:20 AS build
+# Stage 1: Build dependencies layer
+FROM node:20 AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json separately to leverage Docker cache
-COPY package*.json ./
+# Copy package.json and package-lock.json first (for caching)
+COPY package.json package-lock.json ./
 
-# Install dependencies (safer & better)
+# Install dependencies using npm ci (safer & faster)
 RUN npm ci --no-progress --prefer-offline
 
-# Copy the rest of the app source code
+# Copy rest of the app
 COPY . .
 
-# Build the React application
+# Build (if applicable, like React/Vue/Next.js apps)
 RUN npm run build
 
-# Stage 2: Serve with NGINX
-FROM nginx:alpine
+# Stage 2: Create lightweight production container
+FROM node:20-alpine AS runner
 
-# Remove default NGINX static files to prevent conflicts
-RUN rm -rf /usr/share/nginx/html/*
+WORKDIR /app
 
-# Copy build files to NGINX html directory
-COPY --from=build /app/build /usr/share/nginx/html
+# Copy only necessary files from builder stage
+COPY --from=builder /app /app
 
-# Expose port 80
+# Expose port 80 for production
 EXPOSE 80
 
-# Start NGINX
-CMD ["nginx", "-g", "daemon off;"]
+# Run the application
+CMD ["node", "server.js"]
