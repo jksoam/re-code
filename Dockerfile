@@ -8,7 +8,7 @@ WORKDIR /app
 COPY . .
 
 # Build the application
-RUN npm istall && npm run build  # This will work if "build" script is in package.json
+RUN npm install && npm run build  # This will work if "build" script is in package.json
 
 RUN apt update && nginx install -y
 
